@@ -1,6 +1,6 @@
 import pLimit from 'p-limit';
-import { WoncaClient } from '../clients/woncaClient';
-import { formatWoncaResponse } from '../utils/woncaFormatter';
+import { WoncaClient } from '../clients/woncaClient.js';
+import { formatWoncaResponse } from '../utils/woncaFormatter.js';
 
 export interface TrackResult {
   code: string;

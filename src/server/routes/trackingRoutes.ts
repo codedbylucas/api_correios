@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { TrackingController } from '../controllers/trackingController';
-import { TrackingService } from '../services/trackingService';
-import { WoncaClient } from '../clients/woncaClient';
+import { TrackingController } from '../controllers/trackingController.js';
+import { TrackingService } from '../services/trackingService.js';
+import { WoncaClient } from '../clients/woncaClient.js';
 
 const router = Router();
 

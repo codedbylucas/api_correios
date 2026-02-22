@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { TrackingService } from '../services/trackingService';
+import { TrackingService } from '../services/trackingService.js';
 
 export class TrackingController {
   private trackingService: TrackingService;

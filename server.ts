@@ -1,5 +1,5 @@
 import express from "express";
-import trackingRoutes from './src/server/routes/trackingRoutes';
+import trackingRoutes from './src/server/routes/trackingRoutes.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
