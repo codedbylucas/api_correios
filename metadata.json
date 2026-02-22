@@ -1,0 +1,5 @@
+{
+  "name": "Correios Batch Tracker",
+  "description": "API agregadora para rastreio de encomendas dos Correios via Wonca API",
+  "requestFramePermissions": []
+}
