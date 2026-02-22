@@ -1,42 +1,46 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import trackingRoutes from './src/server/routes/trackingRoutes';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
 
-  app.use(express.json());
+// Configurações básicas
+app.use(express.json());
 
-  // API routes
-  app.use('/api/track', trackingRoutes);
+// Registro SÍNCRONO das rotas da API (Crítico para Vercel)
+app.use('/api/track', trackingRoutes);
 
-  // Health check
-  app.get("/api/health", (req, res) => {
-    res.json({ 
-      status: "ok", 
-      timestamp: new Date().toISOString(),
-      simulation: process.env.SIMULATION_MODE === 'true'
-    });
+// Health check para debug na Vercel
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    simulation: process.env.SIMULATION_MODE === 'true',
+    node_env: process.env.NODE_ENV
   });
+});
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+// Lógica de Inicialização
+if (process.env.NODE_ENV !== "production") {
+  // Em desenvolvimento, carregamos o Vite dinamicamente
+  import("vite").then(async ({ createServer: createViteServer }) => {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
-    app.use(express.static("dist"));
-  }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    
+    const PORT = 3000;
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Dev server running on http://localhost:${PORT}`);
+    });
   });
+} else {
+  // Em produção (Vercel), servimos os arquivos estáticos da pasta dist
+  app.use(express.static("dist"));
 }
 
-startServer();
+// Exportamos o app para a Vercel
+export default app;
