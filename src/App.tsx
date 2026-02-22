@@ -70,7 +70,37 @@ export default function App() {
       }
 
       const data = await res.json();
-      setResponse(data);
+      
+      // Normalize response for the UI
+      let normalized: BatchResponse;
+      if (Array.isArray(data)) {
+        normalized = {
+          requested: codes.length,
+          succeeded: data.filter(r => !r.error).length,
+          failed: data.filter(r => r.error).length,
+          results: data.map(r => ({
+            code: r.code,
+            ok: !r.error,
+            data: !r.error ? r : null,
+            error: r.error ? { message: r.error, status: r.status } : undefined
+          }))
+        };
+      } else {
+        // Single object response
+        normalized = {
+          requested: 1,
+          succeeded: data.error ? 0 : 1,
+          failed: data.error ? 1 : 0,
+          results: [{
+            code: data.code,
+            ok: !data.error,
+            data: !data.error ? data : null,
+            error: data.error ? { message: data.error, status: data.status } : undefined
+          }]
+        };
+      }
+      
+      setResponse(normalized);
     } catch (err: any) {
       setError(err.message);
     } finally {
