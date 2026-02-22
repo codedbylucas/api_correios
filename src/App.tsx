@@ -203,35 +203,43 @@ export default function App() {
                   <div className="p-8 bg-white rounded-3xl border border-black/5 shadow-sm space-y-6">
                     <div className="flex items-center gap-2">
                       <Terminal className="w-5 h-5 text-[#5A5A40]" />
-                      <h3 className="font-serif italic text-xl">API Endpoint</h3>
+                      <h3 className="font-serif italic text-xl">Documentação da API</h3>
                     </div>
                     <div className="space-y-4">
-                      <div className="p-4 bg-[#F5F5F0] rounded-2xl relative group">
-                        <code className="text-xs font-mono block">POST /api/track/batch</code>
-                        <button 
-                          onClick={() => copyToClipboard('POST /api/track/batch')}
-                          className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 opacity-40" />}
-                        </button>
+                      <div className="space-y-2">
+                        <h4 className="text-[10px] uppercase tracking-widest font-bold opacity-40">Método</h4>
+                        <div className="p-4 bg-[#F5F5F0] rounded-2xl relative group">
+                          <code className="text-xs font-mono block">POST /api/track/batch</code>
+                          <button 
+                            onClick={() => copyToClipboard('POST /api/track/batch')}
+                            className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 opacity-40" />}
+                          </button>
+                        </div>
                       </div>
-                      <div className="space-y-3">
-                        <h4 className="text-[10px] uppercase tracking-widest font-bold opacity-40">Configuração Atual</h4>
-                        <div className="space-y-2">
-                          {[
-                            { key: 'WONCA_URL', desc: 'URL da API externa', val: 'https://api-labs.wonca.com.br/wonca.labs.v1.LabsService/Track' },
-                            { key: 'WONCA_AUTH', desc: 'Token de Autorização', val: 'Apikey h_pGYWPsNoUGC2OHJt0ZOZEZFPvYlqnYO6P-RTzUTr0' },
-                            { key: 'MAX_CODES', desc: 'Limite de códigos/lote', val: '200' },
-                            { key: 'CONCURRENCY', desc: 'Requisições simultâneas', val: '1' },
-                          ].map((item) => (
-                            <div key={item.key} className="flex items-center justify-between p-4 bg-[#F5F5F0]/50 rounded-2xl border border-black/5">
-                              <div>
-                                <p className="text-[10px] font-mono font-bold opacity-60">{item.key}</p>
-                                <p className="text-[10px] opacity-40">{item.desc}</p>
-                              </div>
-                              <p className="text-[10px] font-mono bg-white px-2 py-1 rounded border border-black/5">{item.val}</p>
-                            </div>
-                          ))}
+
+                      <div className="space-y-2">
+                        <h4 className="text-[10px] uppercase tracking-widest font-bold opacity-40">Headers</h4>
+                        <div className="p-4 bg-[#F5F5F0] rounded-2xl">
+                          <code className="text-xs font-mono block">Content-Type: application/json</code>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <h4 className="text-[10px] uppercase tracking-widest font-bold opacity-40">Body (JSON)</h4>
+                        <div className="p-4 bg-[#F5F5F0] rounded-2xl relative group">
+                          <pre className="text-[10px] font-mono block">
+{`{
+  "codes": ["YB754713088BR"]
+}`}
+                          </pre>
+                          <button 
+                            onClick={() => copyToClipboard('{\n  "codes": ["YB754713088BR"]\n}')}
+                            className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 opacity-40" />}
+                          </button>
                         </div>
                       </div>
                     </div>
