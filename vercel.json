@@ -11,6 +11,11 @@
       "config": { "distDir": "dist" }
     }
   ],
+  "functions": {
+    "server.ts": {
+      "maxDuration": 15
+    }
+  },
   "routes": [
     {
       "src": "/api/(.*)",
