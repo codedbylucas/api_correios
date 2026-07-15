@@ -1,5 +1,11 @@
 import express from "express";
+import cookieParser from 'cookie-parser';
+import authRoutes from './src/server/routes/authRoutes.js';
 import trackingRoutes from './src/server/routes/trackingRoutes.js';
+import webhookAdminRoutes from './src/server/routes/webhookAdminRoutes.js';
+import subscriptionRoutes from './src/server/routes/subscriptionRoutes.js';
+import cronRoutes from './src/server/routes/cronRoutes.js';
+import { sessionAuth } from './src/server/middleware/sessionAuth.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -8,9 +14,15 @@ const app = express();
 
 // Configurações básicas
 app.use(express.json());
+app.use(cookieParser());
+app.use(sessionAuth);
 
 // Registro SÍNCRONO das rotas da API (Crítico para Vercel)
+app.use('/api/auth', authRoutes);
 app.use('/api/track', trackingRoutes);
+app.use('/api/webhooks', webhookAdminRoutes);
+app.use('/api/tracking-subscriptions', subscriptionRoutes);
+app.use('/api/cron', cronRoutes);
 
 // Health check para debug na Vercel
 app.get("/api/health", (req, res) => {
@@ -44,3 +56,4 @@ if (process.env.NODE_ENV !== "production") {
 
 // Exportamos o app para a Vercel
 export default app;
+

@@ -27,7 +27,7 @@ export function formatWoncaResponse(envelope) {
     const uf = event.unidade?.endereco?.uf || null;
 
     // Regra: montar fromText
-    let fromText = null;
+    let fromText: string | null = null;
     if (unitType) {
       if (city && uf) {
         // se tiver unitType, city, uf: "${unitType}, ${city} - ${uf}"

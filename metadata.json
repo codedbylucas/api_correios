@@ -1,5 +1,5 @@
 {
-  "name": "Correios Batch Tracker",
-  "description": "API agregadora para rastreio de encomendas dos Correios via Wonca API",
+  "name": "Cronos Labs",
+  "description": "Plataforma de rastreio em lote e monitoramento via webhook de encomendas dos Correios, via Wonca API",
   "requestFramePermissions": []
 }
