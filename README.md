@@ -8,6 +8,7 @@
 ### Headers
 ```http
 Content-Type: application/json
+Authorization: Apikey SUA_CHAVE_AQUI
 ```
 
 ### Body
@@ -17,19 +18,49 @@ Content-Type: application/json
 }
 ```
 
-## Painel de configuração
+## Painel
 
-A interface web tem duas áreas (botões no topo):
+Acesso via login (e-mail/senha) em `/login`. O primeiro usuário é criado pela
+CLI (`npm run auth:create-user -- email@empresa.com senha`); demais telas
+(Webhooks, Chaves de API, Documentação, etc.) ficam atrás desse login, dentro
+do painel.
 
-- **Rastrear** — consulta em lote sob demanda (a tela original).
-- **Painel** — gerenciamento completo do serviço de webhook, autenticado pela
-  sua chave de API (`Authorization: Apikey ...`): criar/pausar endpoints (com
-  exibição única do signing secret), criar perfis de monitoramento, inscrever
-  e encerrar códigos, acompanhar o histórico de entregas com reenvio de
-  falhas, e criar/revogar chaves de API.
+Dentro do painel, **Webhooks** reúne o gerenciamento completo do serviço:
+criar/pausar/editar/testar endpoints (com exibição única do signing secret),
+criar perfis de monitoramento, inscrever e encerrar códigos, e acompanhar o
+histórico de entregas com reenvio de falhas. **Chaves de API** cria/revoga
+chaves usadas para autenticação programática (`Authorization: Apikey ...`)
+tanto na API de rastreio quanto nas rotas de Webhooks — a primeira chave
+também pode ser criada pela CLI (`npm run webhooks:create-api-key`) para uso
+administrativo, mas o fluxo normal é criar pelo próprio painel.
 
-A primeira chave é criada pela CLI (`npm run webhooks:create-api-key`); as
-demais podem ser criadas pelo próprio painel.
+## Provedor de rastreio alternativo (scraper próprio, sem Wonca)
+
+Além da Wonca, existe um segundo provedor de dados: `TRACKING_PROVIDER=scraper`
+consulta diretamente o site público de rastreio dos Correios
+(`rastreamento.correios.com.br`), resolve o captcha da página e usa a mesma
+resposta JSON que os Correios retornam — sem custo por verificação.
+
+**Leia antes de usar em produção:**
+- Isso **não é uma integração oficial** e não tem contrato/SLA com os
+  Correios. O comunicado oficial deles ([link](https://www.correios.com.br/central-de-informacoes/boletim-aos-clientes/correios-aprimoram-ciberseguranca-para-rastreamento-de-pacotes))
+  diz explicitamente que a API oficial (Rastro) foi restrita "para impedir
+  que terceiros acessem informações... e reduzir o uso indevido por sites e
+  aplicativos não autorizados" — este scraper é exatamente esse uso indevido
+  do ponto de vista deles. Pode parar de funcionar sem aviso a qualquer
+  momento (mudança de HTML, tipo de captcha, bloqueio por IP/volume).
+- O captcha é resolvido por OCR (`CAPTCHA_SOLVER=ocr`, padrão, grátis) — na
+  prática **não é 100% confiável**, erra ocasionalmente por confusão de
+  caracteres parecidos (l/i, f/t, c/e). O client tenta de novo com um
+  captcha novo até `SCRAPER_MAX_CAPTCHA_RETRIES` vezes antes de desistir
+  daquela verificação — como o rastreio de webhook é periódico, uma falha
+  não é fatal, só tenta de novo no próximo ciclo agendado. Para maior
+  confiabilidade, configure `CAPTCHA_SOLVER=2captcha` (ou `anticaptcha`) com
+  `CAPTCHA_API_KEY` — serviço pago de resolução (~US$1-3 por 1000).
+- `SCRAPER_REQUEST_DELAY_MS` (padrão 1500ms) limita a taxa de requisições
+  por verificação — reduz o risco de bloqueio por volume, mas não elimina.
+- A Wonca continua sendo o padrão (`TRACKING_PROVIDER=wonca`); trocar de
+  provedor é só mudar essa variável, nenhum outro código muda.
 
 ## Rastreio via webhook (assinaturas)
 
@@ -50,10 +81,13 @@ npm run db:migrate
 npm run webhooks:create-api-key -- "minha-chave"
 ```
 
-Todas as rotas abaixo (exceto `/api/cron/run`) exigem o header:
+Todas as rotas abaixo (exceto `/api/cron/run`) aceitam a sessão do painel
+(navegador logado) ou o header:
 ```http
 Authorization: Apikey SUA_CHAVE_AQUI
 ```
+As rotas de `/api/webhooks/keys` (criar/listar/revogar chaves) exigem sessão
+de login — uma chave de API não pode ser usada para mintar outras chaves.
 
 ### 1. Crie um endpoint de webhook
 `POST /api/webhooks/endpoints`
@@ -161,3 +195,6 @@ etc.) chamando esse mesmo endpoint.
 | `unauthenticated` | 401 | `Authorization` ausente/inválido |
 | `invalid_argument` | 400 | Código malformado, mais de 100 códigos, campos ausentes |
 | `not_found` | 404 | Endpoint/perfil/inscrição inexistente |
+
+E-mail: verify@cronos.local
+Senha: SenhaForte123

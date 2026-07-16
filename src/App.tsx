@@ -1,11 +1,11 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import PanelLayout from './pages/PanelLayout';
 import WebhooksPage from './pages/WebhooksPage';
 import ApiKeysPage from './pages/ApiKeysPage';
+import DocsPage from './pages/DocsPage';
 import ComingSoon from './pages/ComingSoon';
 import { useAuth } from './hooks/useAuth';
 
@@ -19,21 +19,21 @@ function ProtectedRoute() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/panel" element={<ProtectedRoute />}>
-        <Route index element={<ComingSoon title="Início" />} />
+        <Route index element={<ComingSoon title="InÃ­cio" />} />
         <Route path="webhooks" element={<WebhooksPage />} />
         <Route path="api-keys" element={<ApiKeysPage />} />
+        <Route path="docs" element={<DocsPage />} />
         <Route path="rastreios" element={<ComingSoon title="Rastreios" />} />
         <Route path="alertas" element={<ComingSoon title="Alertas" />} />
-        <Route path="relatorios" element={<ComingSoon title="Relatórios" />} />
-        <Route path="integracoes" element={<ComingSoon title="Integrações" />} />
-        <Route path="configuracoes" element={<ComingSoon title="Configurações" />} />
+        <Route path="relatorios" element={<ComingSoon title="RelatÃ³rios" />} />
+        <Route path="integracoes" element={<ComingSoon title="IntegraÃ§Ãµes" />} />
+        <Route path="configuracoes" element={<ComingSoon title="ConfiguraÃ§Ãµes" />} />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }

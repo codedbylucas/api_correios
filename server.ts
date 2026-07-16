@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from "express";
 import cookieParser from 'cookie-parser';
 import authRoutes from './src/server/routes/authRoutes.js';
@@ -6,9 +7,6 @@ import webhookAdminRoutes from './src/server/routes/webhookAdminRoutes.js';
 import subscriptionRoutes from './src/server/routes/subscriptionRoutes.js';
 import cronRoutes from './src/server/routes/cronRoutes.js';
 import { sessionAuth } from './src/server/middleware/sessionAuth.js';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const app = express();
 

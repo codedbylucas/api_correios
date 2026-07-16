@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/requireAuth.js';
+import { apiKeyOrSession } from '../middleware/apiKeyOrSession.js';
 import * as subscriptionController from '../controllers/subscriptionController.js';
 
 const router = Router();
 
-router.use(requireAuth);
+router.use(apiKeyOrSession);
 
 router.get('/', subscriptionController.listSubscriptions);
 router.post('/', subscriptionController.upsertSubscriptions);

@@ -1,6 +1,9 @@
 import pLimit from 'p-limit';
-import { WoncaClient } from '../clients/woncaClient.js';
 import { formatWoncaResponse } from '../utils/woncaFormatter.js';
+
+export interface TrackingClient {
+  track(code: string): Promise<{ carrier?: string; json?: string; [key: string]: any }>;
+}
 
 export interface TrackResult {
   code: string;
@@ -21,11 +24,11 @@ export interface BatchTrackResponse {
 }
 
 export class TrackingService {
-  private woncaClient: WoncaClient;
+  private woncaClient: TrackingClient;
   private concurrency: number;
   private isSimulation: boolean;
 
-  constructor(woncaClient: WoncaClient, concurrency: number, isSimulation = false) {
+  constructor(woncaClient: TrackingClient, concurrency: number, isSimulation = false) {
     this.woncaClient = woncaClient;
     this.concurrency = concurrency;
     this.isSimulation = isSimulation;

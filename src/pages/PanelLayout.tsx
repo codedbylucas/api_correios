@@ -1,17 +1,18 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Activity, Bell, Home, KeyRound, LayoutGrid, LogOut, PackageSearch, Settings, Webhook } from 'lucide-react';
+import { Activity, Bell, BookOpen, Home, KeyRound, LayoutGrid, LogOut, PackageSearch, Settings, Webhook } from 'lucide-react';
 import { BrandMark, BRAND_NAME } from '../components/Brand';
 import { useAuth } from '../hooks/useAuth';
 
 const items = [
-  { to: '/panel', label: 'Início', icon: Home },
+  { to: '/panel', label: 'InÃ­cio', icon: Home },
   { to: '/panel/webhooks', label: 'Webhooks', icon: Webhook },
   { to: '/panel/api-keys', label: 'Chaves API', icon: KeyRound },
+  { to: '/panel/docs', label: 'DocumentaÃ§Ã£o', icon: BookOpen },
   { to: '/panel/rastreios', label: 'Rastreios', icon: PackageSearch },
   { to: '/panel/alertas', label: 'Alertas', icon: Bell },
-  { to: '/panel/relatorios', label: 'Relatórios', icon: Activity },
-  { to: '/panel/integracoes', label: 'Integrações', icon: LayoutGrid },
-  { to: '/panel/configuracoes', label: 'Configurações', icon: Settings },
+  { to: '/panel/relatorios', label: 'RelatÃ³rios', icon: Activity },
+  { to: '/panel/integracoes', label: 'IntegraÃ§Ãµes', icon: LayoutGrid },
+  { to: '/panel/configuracoes', label: 'ConfiguraÃ§Ãµes', icon: Settings },
 ];
 
 export default function PanelLayout() {

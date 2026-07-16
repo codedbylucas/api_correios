@@ -35,7 +35,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center text-center mb-8">
           <BrandMark size={56} />
           <h1 className="mt-4 text-2xl font-bold tracking-tight">Painel {BRAND_NAME}</h1>
-          <p className="text-sm text-white/40 mt-1">Acesse com o usu·rio criado no bootstrap.</p>
+          <p className="text-sm text-white/40 mt-1">Acesse com o usu√°rio criado no bootstrap.</p>
         </div>
         <form onSubmit={submit} className={`${panelCard} p-8 space-y-4`}>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@empresa.com" className={panelInput} required />

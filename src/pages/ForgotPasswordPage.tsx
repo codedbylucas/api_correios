@@ -12,7 +12,7 @@ export default function ForgotPasswordPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const data = await api<{ ok: boolean; resetToken?: string }>('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
-    setMessage('Se o usu·rio existir, um token de redefiniÁ„o foi gerado.');
+    setMessage('Se o usu√°rio existir, um token de redefini√ß√£o foi gerado.');
     setResetToken(data.resetToken || null);
   };
 

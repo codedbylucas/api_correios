@@ -6,7 +6,7 @@ export default function ComingSoon({ title = 'Em breve' }: { title?: string }) {
       <div className="max-w-2xl bg-[#131316] border border-white/10 rounded-2xl p-8">
         <Construction className="w-8 h-8 text-[#E7B24A] mb-4" />
         <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-        <p className="text-sm text-white/40 mt-2">Esta seÁ„o j· est· reservada no painel e ser· conectada ao fluxo correspondente.</p>
+        <p className="text-sm text-white/40 mt-2">Esta se√ß√£o j√° est√° reservada no painel e ser√° conectada ao fluxo correspondente.</p>
       </div>
     </div>
   );

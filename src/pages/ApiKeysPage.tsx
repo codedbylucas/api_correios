@@ -54,10 +54,10 @@ export default function ApiKeysPage() {
     <div className="px-6 py-10 lg:px-10 space-y-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><KeyRound className="w-6 h-6 text-[#E7B24A]" /> Chaves de API</h1>
-        <p className="text-sm text-white/40 mt-1">Crie e revogue chaves usadas nas integrações externas.</p>
+        <p className="text-sm text-white/40 mt-1">Crie e revogue chaves usadas nas integraÃ§Ãµes externas.</p>
       </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
-      {secret && <div className={`${panelCard} p-5 border-[#E7B24A]/30`}><p className="text-xs text-[#E7B24A] font-bold uppercase mb-2">Chave exibida uma única vez</p><code className="block text-xs bg-black/30 p-3 rounded-xl break-all">{secret}</code></div>}
+      {secret && <div className={`${panelCard} p-5 border-[#E7B24A]/30`}><p className="text-xs text-[#E7B24A] font-bold uppercase mb-2">Chave exibida uma Ãºnica vez</p><code className="block text-xs bg-black/30 p-3 rounded-xl break-all">{secret}</code></div>}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <form onSubmit={create} className={`${panelCard} p-6 space-y-3 lg:col-span-4`}>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome da chave" className={panelInput} required />
@@ -68,7 +68,7 @@ export default function ApiKeysPage() {
             <div key={key.id} className={`${panelCard} p-5 flex items-center justify-between gap-4`}>
               <div>
                 <p className="text-sm font-medium">{key.name}</p>
-                <p className="text-[11px] text-white/35 mt-1">criada {fmtDate(key.createdAt)} · último uso {fmtDate(key.lastUsedAt)}</p>
+                <p className="text-[11px] text-white/35 mt-1">criada {fmtDate(key.createdAt)} Â· Ãºltimo uso {fmtDate(key.lastUsedAt)}</p>
               </div>
               <div className="flex items-center gap-3">
                 <span className={`text-[10px] px-2 py-1 rounded-full uppercase font-semibold ${key.revokedAt ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}>{key.revokedAt ? 'Revogada' : 'Ativa'}</span>

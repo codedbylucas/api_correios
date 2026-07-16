@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   KeyRound, Webhook, Clock, ListChecks, Send, RefreshCw, Pause, Play,
-  Copy, Check, LogOut, Plus, Loader2, XCircle, ShieldCheck, Trash2,
+  Copy, Check, Plus, XCircle, ShieldCheck, Trash2,
   LayoutGrid, Activity, Edit3,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BrandMark, BRAND_NAME } from '../components/Brand';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 interface EndpointRow {
   id: string;
@@ -65,12 +66,10 @@ interface KeyRow {
 
 type Tab = 'overview' | 'endpoints' | 'profiles' | 'subscriptions' | 'deliveries' | 'keys';
 
-const STORAGE_KEY = 'panel_api_key';
-
 const fmtDate = (value?: string | null) =>
   value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
 
-function useApi(_apiKey: string, onUnauthorized: () => void) {
+function useApi(onUnauthorized: () => void) {
   return useCallback(
     async (path: string, options: RequestInit = {}) => {
       const res = await fetch(path, {
@@ -78,13 +77,12 @@ function useApi(_apiKey: string, onUnauthorized: () => void) {
         ...options,
         headers: {
           'Content-Type': 'application/json',
-
           ...(options.headers || {}),
         },
       });
       if (res.status === 401) {
         onUnauthorized();
-        throw new Error('Chave de API inválida ou revogada.');
+        throw new Error('Sessão expirada. Faça login novamente.');
       }
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -190,18 +188,16 @@ const tabDescriptions: Record<Tab, string> = {
   keys: 'Chaves de API usadas para autenticar no Painel e na API de webhooks.',
 };
 
-export default function AdminPanel() {
-  const [apiKey, setApiKey] = useState<string>('session');
-  const [keyInput, setKeyInput] = useState('');
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [authLoading, setAuthLoading] = useState(false);
+export default function WebhooksPage() {
+  const { logout: authLogout } = useAuth();
+  const navigate = useNavigate();
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    setApiKey('');
-  }, []);
+  const handleUnauthorized = useCallback(() => {
+    authLogout();
+    navigate('/login', { replace: true });
+  }, [authLogout, navigate]);
 
-  const api = useApi(apiKey, logout);
+  const api = useApi(handleUnauthorized);
 
   const [tab, setTab] = useState<Tab>('overview');
   const [error, setError] = useState<string | null>(null);
@@ -263,8 +259,8 @@ export default function AdminPanel() {
   );
 
   useEffect(() => {
-    if (apiKey) refresh(tab);
-  }, [apiKey, tab, refresh]);
+    refresh(tab);
+  }, [tab, refresh]);
 
   const stats = useMemo(() => {
     const activeEndpoints = endpoints.filter((e) => e.active).length;
@@ -294,86 +290,12 @@ export default function AdminPanel() {
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const candidate = keyInput.trim();
-    if (!candidate) return;
-    setAuthLoading(true);
-    setAuthError(null);
-    try {
-      const res = await fetch('/api/webhooks/keys', { headers: { Authorization: `Apikey ${candidate}` } });
-      if (res.status === 401) throw new Error('Chave de API inválida ou revogada.');
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message || `Erro ${res.status} — o banco de dados está configurado?`);
-      }
-      localStorage.setItem(STORAGE_KEY, candidate);
-      setApiKey(candidate);
-      setKeyInput('');
-    } catch (err: any) {
-      setAuthError(err.message);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  if (!apiKey) {
-    return (
-      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center px-6 py-12">
-        <div className="max-w-md w-full">
-          <div className="flex flex-col items-center text-center mb-8">
-            <BrandMark size={56} />
-            <h1 className="mt-4 text-2xl font-bold text-white tracking-tight">Painel {BRAND_NAME}</h1>
-            <p className="text-sm text-white/40 mt-1">Gerencie endpoints, perfis e inscrições de webhook.</p>
-          </div>
-          <div className={`${cardCls} p-8 space-y-5`}>
-            <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center">
-              <KeyRound className="w-6 h-6 text-[#E7B24A]" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg text-white mb-1">Autenticação</h3>
-              <p className="text-sm text-white/40">
-                Informe sua chave de API para gerenciar endpoints, perfis e inscrições. A primeira chave é criada com{' '}
-                <code className="text-xs bg-white/5 text-white/70 px-1.5 py-0.5 rounded">npm run webhooks:create-api-key</code>.
-              </p>
-            </div>
-            <form onSubmit={handleLogin} className="space-y-3">
-              <input
-                type="password"
-                value={keyInput}
-                onChange={(e) => setKeyInput(e.target.value)}
-                placeholder="wck_live_..."
-                className={`${inputCls} font-mono`}
-              />
-              <button type="submit" disabled={authLoading} className={`${primaryBtnCls} w-full`}>
-                {authLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-                Entrar no Painel
-              </button>
-            </form>
-            {authError && (
-              <p className="text-red-400 text-sm font-medium flex items-center gap-2">
-                <XCircle className="w-4 h-4 shrink-0" /> {authError}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const activeItem = navItems.find((t) => t.id === tab)!;
 
   return (
     <div className="flex flex-col lg:flex-row lg:min-h-[calc(100vh-5rem)]">
-      {/* Sidebar */}
-      <aside className="lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 lg:sticky lg:top-20 lg:h-[calc(100vh-5rem)] flex lg:flex-col bg-[#0A0A0B]">
-        <div className="hidden lg:flex flex-col gap-3 px-6 pt-8 pb-6 border-b border-white/10">
-          <BrandMark size={36} />
-          <div>
-            <p className="text-sm font-bold text-white tracking-wide">{BRAND_NAME}</p>
-            <p className="text-[11px] text-white/30">Painel de Webhooks</p>
-          </div>
-        </div>
+      {/* Sub-navegação de Webhooks */}
+      <aside className="lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 lg:sticky lg:top-0 lg:h-screen flex lg:flex-col bg-[#0A0A0B]">
         <nav className="flex lg:flex-col gap-1 px-3 py-3 lg:py-6 overflow-x-auto lg:overflow-visible flex-1">
           {navItems.map((t) => (
             <button
@@ -392,9 +314,6 @@ export default function AdminPanel() {
           <button onClick={() => refresh(tab)} className={ghostBtnCls}>
             <RefreshCw className="w-3.5 h-3.5" /> Atualizar
           </button>
-          <button onClick={logout} className={`${ghostBtnCls} text-red-400 border-red-500/20 hover:bg-red-500/10`}>
-            <LogOut className="w-3.5 h-3.5" /> Sair
-          </button>
         </div>
       </aside>
 
@@ -403,9 +322,6 @@ export default function AdminPanel() {
         <div className="flex items-center justify-between flex-wrap gap-3 lg:hidden">
           <button onClick={() => refresh(tab)} className={ghostBtnCls}>
             <RefreshCw className="w-3.5 h-3.5" /> Atualizar
-          </button>
-          <button onClick={logout} className={`${ghostBtnCls} text-red-400 border-red-500/20`}>
-            <LogOut className="w-3.5 h-3.5" /> Sair
           </button>
         </div>
 
@@ -544,7 +460,7 @@ export default function AdminPanel() {
                         onClick={() => {
                           const url = window.prompt('URL do endpoint', ep.url);
                           if (!url) return;
-                          const description = window.prompt('Descri��o do endpoint', ep.description || '') ?? '';
+                          const description = window.prompt('Descrição do endpoint', ep.description || '') ?? '';
                           run(async () => {
                             await api(`/api/webhooks/endpoints/${ep.id}`, {
                               method: 'PATCH',
@@ -904,7 +820,3 @@ export default function AdminPanel() {
     </div>
   );
 }
-
-
-
-
