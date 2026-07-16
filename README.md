@@ -62,6 +62,25 @@ resposta JSON que os Correios retornam — sem custo por verificação.
 - A Wonca continua sendo o padrão (`TRACKING_PROVIDER=wonca`); trocar de
   provedor é só mudar essa variável, nenhum outro código muda.
 
+## Provedor `crnn` (captcha resolvido por serviço externo)
+
+`TRACKING_PROVIDER=crnn` usa o mesmo scraping do site dos Correios, mas
+delega a resolução do captcha via HTTP a uma instância do
+[correios-rastreamento](https://github.com/opastorello/correios-rastreamento)
+(Python/FastAPI), que resolve com uma CRNN treinada especificamente para o
+captcha Securimage dos Correios (~99,6% de acurácia) em vez de OCR genérico.
+
+- `RASTREAMENTO_SERVICE_URL` — URL base da instância (ex.: `http://localhost:8003`
+  quando rodando via `docker compose up` no próprio repo do correios-rastreamento).
+- `RASTREAMENTO_SERVICE_TOKEN` — só necessário se essa instância tiver
+  `API_TOKEN` configurado.
+
+Mesmas ressalvas do provedor `scraper` se aplicam (uso não-oficial, sujeito a
+mudanças sem aviso). A vantagem é apenas a taxa de acerto do captcha; a
+resolução em si roda fora do processo do `api_correios`, então essa instância
+precisa estar disponível (local via Docker, ou hospedada) para o provedor
+funcionar.
+
 ## Rastreio via webhook (assinaturas)
 
 Serviço próprio de monitoramento contínuo: você inscreve códigos, nós verificamos
