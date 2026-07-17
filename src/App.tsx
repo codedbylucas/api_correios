@@ -6,6 +6,7 @@ import PanelLayout from './pages/PanelLayout';
 import WebhooksPage from './pages/WebhooksPage';
 import ApiKeysPage from './pages/ApiKeysPage';
 import DocsPage from './pages/DocsPage';
+import RastreiosPage from './pages/RastreiosPage';
 import ComingSoon from './pages/ComingSoon';
 import { useAuth } from './hooks/useAuth';
 
@@ -27,7 +28,7 @@ export default function App() {
         <Route path="webhooks" element={<WebhooksPage />} />
         <Route path="api-keys" element={<ApiKeysPage />} />
         <Route path="docs" element={<DocsPage />} />
-        <Route path="rastreios" element={<ComingSoon title="Rastreios" />} />
+        <Route path="rastreios" element={<RastreiosPage />} />
         <Route path="alertas" element={<ComingSoon title="Alertas" />} />
         <Route path="relatorios" element={<ComingSoon title="Relatórios" />} />
         <Route path="integracoes" element={<ComingSoon title="Integrações" />} />

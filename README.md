@@ -18,6 +18,14 @@ Authorization: Apikey SUA_CHAVE_AQUI
 }
 ```
 
+Lotes com 2 ou mais códigos são resolvidos com um único captcha compartilhado
+(até 20 códigos por captcha, em lotes sequenciais para lotes maiores) quando o
+provedor configurado suporta isso — ver "Provedores de rastreio" abaixo. O
+formato de resposta é o mesmo independente disso.
+
+Pra testar sem escrever código, use a tela **Rastreios** dentro do painel
+(`/panel/rastreios`) — aceita sessão do navegador, sem precisar de API key.
+
 ## Painel
 
 Acesso via login (e-mail/senha) em `/login`. O primeiro usuário é criado pela
@@ -34,60 +42,60 @@ tanto na API de rastreio quanto nas rotas de Webhooks — a primeira chave
 também pode ser criada pela CLI (`npm run webhooks:create-api-key`) para uso
 administrativo, mas o fluxo normal é criar pelo próprio painel.
 
-## Provedor de rastreio alternativo (scraper próprio, sem Wonca)
+## Provedores de rastreio
 
-Além da Wonca, existe um segundo provedor de dados: `TRACKING_PROVIDER=scraper`
-consulta diretamente o site público de rastreio dos Correios
-(`rastreamento.correios.com.br`), resolve o captcha da página e usa a mesma
-resposta JSON que os Correios retornam — sem custo por verificação.
+Não há integração com serviço pago de terceiros — o rastreio é feito
+diretamente contra o site público dos Correios (`rastreamento.correios.com.br`),
+resolvendo o captcha da página e usando a mesma resposta JSON que os Correios
+retornam. Dois provedores implementam isso, escolhidos por `TRACKING_PROVIDER`:
 
-**Leia antes de usar em produção:**
-- Isso **não é uma integração oficial** e não tem contrato/SLA com os
-  Correios. O comunicado oficial deles ([link](https://www.correios.com.br/central-de-informacoes/boletim-aos-clientes/correios-aprimoram-ciberseguranca-para-rastreamento-de-pacotes))
-  diz explicitamente que a API oficial (Rastro) foi restrita "para impedir
-  que terceiros acessem informações... e reduzir o uso indevido por sites e
-  aplicativos não autorizados" — este scraper é exatamente esse uso indevido
-  do ponto de vista deles. Pode parar de funcionar sem aviso a qualquer
-  momento (mudança de HTML, tipo de captcha, bloqueio por IP/volume).
-- O captcha é resolvido por OCR (`CAPTCHA_SOLVER=ocr`, padrão, grátis) — na
-  prática **não é 100% confiável**, erra ocasionalmente por confusão de
-  caracteres parecidos (l/i, f/t, c/e). O client tenta de novo com um
-  captcha novo até `SCRAPER_MAX_CAPTCHA_RETRIES` vezes antes de desistir
-  daquela verificação — como o rastreio de webhook é periódico, uma falha
-  não é fatal, só tenta de novo no próximo ciclo agendado. Para maior
-  confiabilidade, configure `CAPTCHA_SOLVER=2captcha` (ou `anticaptcha`) com
-  `CAPTCHA_API_KEY` — serviço pago de resolução (~US$1-3 por 1000).
-- `SCRAPER_REQUEST_DELAY_MS` (padrão 1500ms) limita a taxa de requisições
-  por verificação — reduz o risco de bloqueio por volume, mas não elimina.
-- A Wonca continua sendo o padrão (`TRACKING_PROVIDER=wonca`); trocar de
-  provedor é só mudar essa variável, nenhum outro código muda.
-
-## Provedor `crnn` (captcha resolvido por serviço externo)
-
-`TRACKING_PROVIDER=crnn` usa o mesmo scraping do site dos Correios, mas
-delega a resolução do captcha via HTTP a uma instância do
-[correios-rastreamento](https://github.com/opastorello/correios-rastreamento)
-(Python/FastAPI), que resolve com uma CRNN treinada especificamente para o
-captcha Securimage dos Correios (~99,6% de acurácia) em vez de OCR genérico.
-
+**`crnn` (padrão, recomendado)** — delega a resolução do captcha via HTTP a
+uma instância do `correios-rastreamento`, vendorizado neste repo em
+[`services/correios-rastreamento/`](services/correios-rastreamento/)
+(Python/FastAPI + CRNN treinada especificamente para o captcha Securimage dos
+Correios, ~99,6% de acurácia — bem mais confiável que OCR genérico). Também é
+esse provedor que faz a otimização de lote (1 captcha para até 20 códigos).
 - `RASTREAMENTO_SERVICE_URL` — URL base da instância (ex.: `http://localhost:8003`
-  quando rodando via `docker compose up` no próprio repo do correios-rastreamento).
+  rodando localmente via `docker compose up` dentro de `services/correios-rastreamento/`).
 - `RASTREAMENTO_SERVICE_TOKEN` — só necessário se essa instância tiver
   `API_TOKEN` configurado.
+- **Rodando localmente:** em um terminal, `cd services/correios-rastreamento && docker compose up`
+  (sobe em `localhost:8003`); em outro, `npm run dev` na raiz do repo com
+  `TRACKING_PROVIDER=crnn` e `RASTREAMENTO_SERVICE_URL=http://localhost:8003` no `.env`.
+- **Produção:** ver "Deploy em VPS com Coolify" abaixo — o `docker-compose.yml`
+  da raiz já sobe essa instância junto com o resto da stack, acessível só pela
+  rede interna do Docker (sem precisar de `RASTREAMENTO_SERVICE_TOKEN`, já que
+  não fica exposta pra fora). Se preferir hospedar em outro lugar (Railway,
+  Fly.io, etc.), o `Dockerfile` vendorizado em `services/correios-rastreamento/`
+  funciona standalone também — só apontar `RASTREAMENTO_SERVICE_URL` (e
+  `RASTREAMENTO_SERVICE_TOKEN` se aplicável) pra instância pública.
 
-Mesmas ressalvas do provedor `scraper` se aplicam (uso não-oficial, sujeito a
-mudanças sem aviso). A vantagem é apenas a taxa de acerto do captcha; a
-resolução em si roda fora do processo do `api_correios`, então essa instância
-precisa estar disponível (local via Docker, ou hospedada) para o provedor
-funcionar.
+**`scraper`** — mesmo scraping, mas resolve o captcha localmente no processo
+Node (`CAPTCHA_SOLVER=ocr`, Tesseract, grátis mas menos confiável — erra
+ocasionalmente por confusão de caracteres parecidos como l/i, f/t, c/e — ou
+`CAPTCHA_SOLVER=2captcha`/`anticaptcha` com `CAPTCHA_API_KEY`, serviço pago
+~US$1-3 por 1000). Não depende de nenhum serviço externo rodando. Não
+implementa a otimização de lote — cada código é 1 requisição e 1 captcha.
+- `SCRAPER_MAX_CAPTCHA_RETRIES` — tentativas com captcha novo antes de desistir.
+- `SCRAPER_REQUEST_DELAY_MS` (padrão 1500ms) — limita a taxa de requisições.
+
+**Leia antes de usar qualquer um dos dois em produção:** isso **não é uma
+integração oficial** e não tem contrato/SLA com os Correios. O comunicado
+oficial deles ([link](https://www.correios.com.br/central-de-informacoes/boletim-aos-clientes/correios-aprimoram-ciberseguranca-para-rastreamento-de-pacotes))
+diz explicitamente que a API oficial (Rastro) foi restrita "para impedir que
+terceiros acessem informações... e reduzir o uso indevido por sites e
+aplicativos não autorizados" — este scraping é exatamente esse uso indevido do
+ponto de vista deles. Pode parar de funcionar sem aviso a qualquer momento
+(mudança de HTML, tipo de captcha, bloqueio por IP/volume). Como o rastreio de
+webhook é periódico, uma falha pontual de captcha não é fatal — só tenta de
+novo no próximo ciclo agendado.
 
 ## Rastreio via webhook (assinaturas)
 
-Serviço próprio de monitoramento contínuo: você inscreve códigos, nós verificamos
-periodicamente (reaproveitando o mesmo cliente Wonca usado no rastreio sob
-demanda) e entregamos um POST assinado ao seu endpoint sempre que os dados
-mudarem. Não depende do recurso de webhook da Wonca — a Wonca aqui é só a fonte
-de dados por trás do endpoint `Track`.
+Serviço próprio de monitoramento contínuo: você inscreve códigos, nós
+verificamos periodicamente (usando o mesmo provedor de rastreio configurado
+via `TRACKING_PROVIDER`, acima) e entregamos um POST assinado ao seu endpoint
+sempre que os dados mudarem.
 
 ### 0. Pré-requisitos (uma vez)
 
@@ -197,13 +205,15 @@ serialize de novo antes de verificar.
 
 ### 6. Agendamento das verificações
 
-`POST /api/cron/run` (ou `GET`, que é como o Vercel Cron invoca) roda uma
-rodada de verificações + reentregas pendentes. Protegido por
-`Authorization: Bearer $CRON_SECRET`. O `vercel.json` já registra esse cron
-a cada hora — no plano Hobby da Vercel, Cron Jobs só disparam uma vez por dia;
-para a granularidade de 1-12h descrita nos perfis, é necessário o plano Pro
-(cron por hora/minuto) ou um agendador externo (GitHub Actions, cron-job.org,
-etc.) chamando esse mesmo endpoint.
+`POST /api/cron/run` (ou `GET`) roda uma rodada de verificações + reentregas
+pendentes. Protegido por `Authorization: Bearer $CRON_SECRET`. Quem chama esse
+endpoint periodicamente depende de onde está hospedado:
+- **Vercel:** `vercel.json` já registra o cron a cada hora — no plano Hobby,
+  Cron Jobs só disparam uma vez por dia; para a granularidade de 1-12h dos
+  perfis, é necessário o plano Pro.
+- **VPS via Coolify (ver seção abaixo):** o `docker-compose.yml` da raiz já
+  inclui um serviço `cron` que chama esse endpoint a cada `CRON_INTERVAL_SECONDS`
+  (padrão 15 min) — nenhuma configuração extra necessária.
 
 ### Erros
 ```json
@@ -214,6 +224,89 @@ etc.) chamando esse mesmo endpoint.
 | `unauthenticated` | 401 | `Authorization` ausente/inválido |
 | `invalid_argument` | 400 | Código malformado, mais de 100 códigos, campos ausentes |
 | `not_found` | 404 | Endpoint/perfil/inscrição inexistente |
+
+## Deploy em VPS com Coolify
+
+A stack toda (`api_correios` + Postgres + `correios-rastreamento`) sobe com um
+único `docker-compose.yml` na raiz do repo — 4 serviços: `postgres`,
+`migrate` (roda as migrations e sai), `app`, `correios-rastreamento` (só na
+rede interna, não exposto), e `cron` (dispara `/api/cron/run` periodicamente,
+substituindo o Vercel Cron). Testado localmente de ponta a ponta
+(`docker compose up --build`) antes de documentar aqui.
+
+### 1. Preparar as variáveis
+
+Na VPS (ou direto no painel do Coolify, que injeta env vars no compose),
+defina as variáveis do bloco final do [`.env.example`](.env.example)
+("Only consumed by the root docker-compose.yml"), mais `CRON_SECRET`:
+
+```
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=<gere uma senha forte>
+POSTGRES_DB=api_correios
+APP_PORT=3000
+CRON_INTERVAL_SECONDS=900
+CRON_SECRET=<gere um segredo forte>
+COOKIE_SECURE=false   # até você configurar domínio + HTTPS no Coolify — ver nota abaixo
+```
+
+`TRACKING_PROVIDER`, `RASTREAMENTO_SERVICE_URL` e `DATABASE_URL` **não**
+precisam ser setadas manualmente — o `docker-compose.yml` já monta esses
+valores automaticamente (apontando pros serviços internos `correios-rastreamento`
+e `postgres`).
+
+### 2. Criar o recurso no Coolify
+
+1. No painel do Coolify: **New Resource → Docker Compose**.
+2. Aponte pro repositório Git deste projeto (branch `main`) — se o repo for
+   privado, configure a credencial de acesso que o Coolify pedir.
+3. Compose file: `docker-compose.yml` (raiz).
+4. Cole as variáveis do passo 1 na seção de Environment Variables do recurso.
+5. Deploy. O Coolify builda as 3 imagens (`app`, `migrate`,
+   `correios-rastreamento` — `cron` usa a imagem `alpine` pronta) e sobe a
+   stack. O build da imagem do `app` inclui `npm run build` (frontend) e a do
+   `correios-rastreamento` inclui a instalação do PyTorch — a primeira build
+   demora alguns minutos.
+
+*(Os nomes exatos das telas podem variar um pouco entre versões do Coolify —
+procure o equivalente a "Docker Compose" na hora de criar o recurso.)*
+
+### 3. Acessando sem domínio ainda
+
+Sem domínio configurado, acesse via `http://IP_DA_VPS:APP_PORT`. Login
+funciona porque `COOKIE_SECURE=false` nessa fase — um cookie `secure` nunca é
+enviado pelo navegador numa conexão HTTP pura, então essa variável existe
+justamente pra não quebrar o login antes de haver HTTPS.
+
+**Assim que configurar um domínio + certificado válido no Coolify:** troque
+`COOKIE_SECURE` pra `true` (ou remova a variável, esse já é o default em
+produção) e aponte o domínio pro serviço `app`. Webhooks assinados e o login
+do painel devem sempre rodar atrás de HTTPS em produção de verdade — HTTP
+puro é aceitável só nesta fase inicial de validação.
+
+### 4. Criar o primeiro usuário do painel
+
+As migrations rodam automaticamente (serviço `migrate`), mas o primeiro
+usuário precisa ser criado manualmente, uma vez:
+
+```bash
+docker compose exec app npm run auth:create-user -- seu-email@empresa.com "sua-senha"
+```
+
+(Ou, se preferir, pelo terminal do próprio Coolify — o Coolify normalmente dá
+acesso a um shell dentro do serviço `app`.)
+
+### 5. Testando
+
+```bash
+curl http://IP_DA_VPS:APP_PORT/api/health
+```
+
+Depois, logue no painel (`/login`), teste um rastreio em `/panel/rastreios`,
+crie uma chave de API em `/panel/api-keys` e um webhook de teste em
+`/panel/webhooks`.
+
+---
 
 E-mail: verify@cronos.local
 Senha: SenhaForte123

@@ -1,0 +1,89 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-api_correios}
+    volumes:
+      - api_correios_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  correios-rastreamento:
+    build: ./services/correios-rastreamento
+    environment:
+      API_TOKEN: ${RASTREAMENTO_API_TOKEN:-}
+      ENV: production
+    volumes:
+      - correios_rastreamento_data:/app/app/data
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: always
+
+  migrate:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-api_correios}
+    command: ["npx", "tsx", "src/server/db/migrate.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    build: .
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-api_correios}
+      TRACKING_PROVIDER: crnn
+      RASTREAMENTO_SERVICE_URL: http://correios-rastreamento:8000
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      CRON_SECRET: ${CRON_SECRET}
+      TIMEOUT_MS: ${TIMEOUT_MS:-15000}
+      MAX_CODES: ${MAX_CODES:-50}
+      CONCURRENCY: ${CONCURRENCY:-5}
+      SIMULATION_MODE: ${SIMULATION_MODE:-false}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      correios-rastreamento:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: always
+
+  cron:
+    image: alpine:3.20
+    environment:
+      CRON_SECRET: ${CRON_SECRET}
+      CRON_INTERVAL_SECONDS: ${CRON_INTERVAL_SECONDS:-900}
+    command: >
+      sh -c "while true; do
+        sleep \"$$CRON_INTERVAL_SECONDS\";
+        wget -qO- --header=\"Authorization: Bearer $$CRON_SECRET\" http://app:3000/api/cron/run;
+      done"
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: always
+
+volumes:
+  api_correios_pg_data:
+  correios_rastreamento_data:

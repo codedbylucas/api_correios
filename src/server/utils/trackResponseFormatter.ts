@@ -1,9 +1,9 @@
 /**
- * Formata a resposta bruta da Wonca para o padrão limpo solicitado.
- * @param {any} envelope Objeto retornado pela API Wonca
+ * Formata a resposta bruta do provedor de rastreio (Correios) para o padrão limpo da API.
+ * @param {any} envelope Objeto retornado pelo TrackingClient ({carrier, json})
  * @returns {any} JSON formatado ou null se inválido
  */
-export function formatWoncaResponse(envelope) {
+export function formatTrackResponse(envelope) {
   if (!envelope || !envelope.json) return null;
 
   let raw;
@@ -17,7 +17,7 @@ export function formatWoncaResponse(envelope) {
   if (!raw) return null;
 
   const rawEvents = raw.eventos || [];
-  
+
   const events = rawEvents.map(event => {
     // Extração de campos com fallback para null
     const date = event.dtHrCriado?.date || null;

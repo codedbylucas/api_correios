@@ -1,0 +1,34 @@
+# Ambientes virtuais
+.venv/
+venv311/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Dados de treino (grandes demais para git)
+app/captcha/data/
+
+# Histórico de consultas (dados do usuário, não versionar)
+app/data/
+
+# Registry local
+app/captcha/registry.json
+
+# Env
+.env
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code local
+.claude/
+*.bat

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import { TrackingController } from '../controllers/trackingController.js';
 import { trackingService } from '../services/trackingServiceInstance.js';
-import { apiKeyAuth } from '../middleware/apiKeyAuth.js';
+import { apiKeyOrSession } from '../middleware/apiKeyOrSession.js';
 
 const router = Router();
 
@@ -12,7 +12,7 @@ const trackingController = new TrackingController(trackingService);
 
 router.post(
   '/batch',
-  apiKeyAuth,
+  apiKeyOrSession,
   [
     body('codes')
       .exists().withMessage('codes is required')

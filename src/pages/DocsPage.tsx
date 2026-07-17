@@ -105,7 +105,9 @@ export default function DocsPage() {
         <div className={`${panelCard} p-6 space-y-6`}>
           <p className="text-sm text-white/50">
             Consulta em lote sob demanda. Cada chamada aceita até {'{MAX_CODES}'} códigos (200 por padrão) e retorna o
-            status atual de cada um.
+            status atual de cada um. Lotes com 2+ códigos são resolvidos com um único captcha compartilhado (até 20
+            por captcha) quando o provedor configurado suporta — ver README para detalhes de provedores. Pra testar
+            sem escrever código, use a tela <span className="text-[#E7B24A]">Rastreios</span> no painel.
           </p>
 
           <Section title="Método">

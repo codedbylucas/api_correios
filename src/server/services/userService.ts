@@ -3,10 +3,24 @@ import { db } from '../db/client.js';
 import { passwordResetTokens, sessions, users } from '../db/schema.js';
 import { addDays, addHours, generateToken, hashPassword, hashToken, verifyPassword } from '../utils/auth.js';
 import { ApiError } from '../utils/apiError.js';
+import { deleteDevSession, getDevSession, saveDevSession } from './devAuthStore.js';
 
 export const SESSION_COOKIE = 'cronos_session';
 const SESSION_DAYS = 30;
 const RESET_HOURS = 1;
+
+// Bypass local para login sem banco: nunca ativa em produção, e só entra em
+// ação se as duas env vars estiverem setadas — a sessão fica só em memória
+// (some ao reiniciar o servidor), sem tocar no Postgres.
+const DEV_AUTH_EMAIL = process.env.DEV_AUTH_EMAIL;
+const DEV_AUTH_PASSWORD = process.env.DEV_AUTH_PASSWORD;
+const DEV_AUTH_ENABLED = process.env.NODE_ENV !== 'production' && !!DEV_AUTH_EMAIL && !!DEV_AUTH_PASSWORD;
+
+if (DEV_AUTH_ENABLED) {
+  console.warn(
+    '[userService] DEV_AUTH_EMAIL/DEV_AUTH_PASSWORD estão setados — login está usando sessão em memória, sem banco. Nunca defina essas variáveis em produção.'
+  );
+}
 
 export type PublicUser = {
   id: string;
@@ -49,6 +63,21 @@ export async function createUser(input: { email: string; password: string; name?
 }
 
 export async function login(email: string, password: string) {
+  if (DEV_AUTH_ENABLED) {
+    if (normalizeEmail(email) === normalizeEmail(DEV_AUTH_EMAIL!) && password === DEV_AUTH_PASSWORD) {
+      const user: PublicUser = { id: 'dev-user', email: normalizeEmail(DEV_AUTH_EMAIL!), name: 'Dev (sem banco)', createdAt: new Date() };
+      const token = generateToken('sess');
+      saveDevSession(hashToken(token), { session: null, user, expiresAt: addDays(SESSION_DAYS) });
+      return { user, session: null, token };
+    }
+    if (!process.env.DATABASE_URL) {
+      // Sem banco configurado: não dá pra checar contra usuários reais, então
+      // qualquer credencial que não seja a de dev vira 401 em vez do 500 que
+      // viria de tentar consultar o Postgres inexistente.
+      throw new ApiError('unauthenticated', 'Invalid email or password.');
+    }
+  }
+
   const [user] = await db.select().from(users).where(eq(users.email, normalizeEmail(email))).limit(1);
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     throw new ApiError('unauthenticated', 'Invalid email or password.');
@@ -71,6 +100,10 @@ export async function login(email: string, password: string) {
 export async function findSession(token?: string) {
   if (!token) return null;
 
+  if (DEV_AUTH_ENABLED) {
+    return getDevSession(hashToken(token));
+  }
+
   const [row] = await db
     .select({ session: sessions, user: users })
     .from(sessions)
@@ -90,6 +123,10 @@ export async function findSession(token?: string) {
 
 export async function logout(token?: string) {
   if (!token) return;
+  if (DEV_AUTH_ENABLED) {
+    deleteDevSession(hashToken(token));
+    return;
+  }
   await db.delete(sessions).where(eq(sessions.tokenHash, hashToken(token)));
 }
 

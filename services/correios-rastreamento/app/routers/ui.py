@@ -1,0 +1,898 @@
+from fastapi import APIRouter
+from fastapi.responses import HTMLResponse
+
+from app.auth import _TOKEN
+
+router = APIRouter(include_in_schema=False)
+
+_HTML = r"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Correios Rastreamento</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2128;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #7d8590;
+      --accent: #1f6feb;
+      --accent-h: #388bfd;
+      --green: #3fb950;
+      --r: 10px;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px 80px;
+    }
+
+    .logo { font-size: 28px; margin-bottom: 6px; }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -.3px;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+
+    .sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; text-align: center; }
+
+    #main-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    .wrap { width: 100%; max-width: 520px; }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 4px;
+      margin-bottom: 14px;
+    }
+
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      user-select: none;
+    }
+
+    .tab.active { background: var(--surface2); color: var(--text); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 26px 26px 22px;
+    }
+
+    .field + .field { margin-top: 15px; }
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--muted);
+      margin-bottom: 7px;
+    }
+
+    input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      text-transform: uppercase;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(31,111,235,.15);
+    }
+
+    input::placeholder { color: var(--muted); text-transform: none; }
+
+    textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      text-transform: uppercase;
+      resize: none;
+      overflow: hidden;
+      line-height: 1.6;
+      min-height: 44px;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(31,111,235,.15);
+    }
+
+    textarea::placeholder { color: var(--muted); text-transform: none; }
+
+    .cod-hint { font-size: 11px; color: var(--accent); margin-top: 5px; min-height: 16px; }
+
+    button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: background .15s;
+    }
+
+    button:hover:not(:disabled) { background: var(--accent-h); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── result ── */
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+      margin-top: 14px;
+    }
+
+    .result-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 18px 12px;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+
+    .result-code { font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; letter-spacing: .03em; }
+    .result-type { font-size: 13px; color: var(--muted); }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+
+    .badge-delivered { background: rgba(63,185,80,.15); color: var(--green); }
+    .badge-transit   { background: rgba(31,111,235,.15); color: var(--accent-h); }
+
+    .result-meta {
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .meta-item { font-size: 12px; color: var(--muted); }
+    .meta-item strong { color: var(--text); font-weight: 500; }
+
+    /* ── timeline ── */
+    .timeline { padding: 6px 18px 14px; }
+
+    .tl-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--muted);
+      margin: 12px 0 10px;
+    }
+
+    .event {
+      display: flex;
+      gap: 14px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .event:last-child { border-bottom: none; }
+
+    .event-dot {
+      flex-shrink: 0;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--border);
+      margin-top: 5px;
+    }
+
+    .event-dot.first { background: var(--green); box-shadow: 0 0 0 3px rgba(63,185,80,.2); }
+    .event-dot.transit { background: var(--accent); }
+
+    .event-body { flex: 1; min-width: 0; }
+    .event-desc { font-size: 13.5px; font-weight: 500; }
+    .event-loc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .event-time { font-size: 11px; color: var(--muted); white-space: nowrap; margin-top: 1px; font-variant-numeric: tabular-nums; }
+
+    .err-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 14px 18px;
+      font-size: 14px;
+      color: var(--muted);
+      margin-top: 14px;
+    }
+
+    /* ── history ── */
+    .hist-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 10px;
+    }
+
+    .hist-clear {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      font-family: inherit;
+      padding: 3px 8px;
+      cursor: pointer;
+      margin-top: 0;
+      width: auto;
+      transition: color .15s, border-color .15s;
+    }
+
+    .hist-clear:hover { color: var(--text); border-color: var(--muted); }
+
+    .hist-del {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px 7px;
+      margin: 0;
+      width: auto;
+      margin-top: 0;
+      border-radius: 5px;
+      flex-shrink: 0;
+      transition: color .15s, background .15s;
+    }
+
+    .hist-del:hover { color: var(--text); background: var(--surface2); }
+
+    .hist-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 10px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background .12s;
+      gap: 12px;
+    }
+
+    .hist-item:hover { background: var(--surface2); }
+
+    .hist-code {
+      font-size: 13.5px;
+      font-weight: 600;
+      letter-spacing: .03em;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hist-status {
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .hist-time { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+    .hist-empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 32px 0;
+    }
+
+    /* ── progress log ── */
+    .log-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px 20px;
+      margin-top: 14px;
+    }
+
+    .log-head {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--muted);
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .elapsed { font-variant-numeric: tabular-nums; }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      padding: 4px 0;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity .2s, transform .2s;
+      line-height: 1.4;
+    }
+
+    .step.show { opacity: 1; transform: none; }
+
+    .si {
+      flex-shrink: 0;
+      width: 18px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .step.pending .si::after {
+      content: '';
+      display: block;
+      width: 13px; height: 13px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: rot .6s linear infinite;
+    }
+
+    .step.done .si { color: var(--muted); }
+    .step.done .si::after { content: '✓'; font-size: 14px; }
+    .step.done > span:last-child { color: var(--muted); }
+
+    .step.fail .si { color: var(--muted); }
+    .step.fail .si::after { content: '✕'; font-size: 14px; }
+    .step.fail > span:last-child { color: var(--muted); }
+
+    /* ── gate ── */
+    .spin {
+      width: 15px; height: 15px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: rot .65s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes rot { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div id="gate" style="display:none;width:100%;max-width:400px;text-align:center">
+    <div class="logo">🔒</div>
+    <h1>Acesso restrito</h1>
+    <p class="sub">Informe o API Token para continuar</p>
+    <div class="card" style="margin-top:20px">
+      <div class="field">
+        <label>API Token</label>
+        <input id="gate-token" type="password" placeholder="Token de acesso" autocomplete="off" style="text-transform:none" />
+      </div>
+      <button id="btn-gate" onclick="gateLogin()" style="margin-top:14px">Entrar</button>
+      <div id="gate-msg" style="display:none;margin-top:10px;font-size:13px"></div>
+    </div>
+  </div>
+
+  <div id="main-content">
+    <div class="logo">📦</div>
+    <h1>Rastreamento Correios</h1>
+    <p class="sub">Acompanhe o status de entrega dos seus objetos</p>
+
+    <div class="wrap">
+      <div class="tabs">
+        <div class="tab active" id="tab-rastrear" onclick="switchTab('rastrear')">Rastrear</div>
+        <div class="tab"        id="tab-historico" onclick="switchTab('historico')">Histórico</div>
+      </div>
+
+      <!-- aba rastrear -->
+      <div class="tab-panel active" id="panel-rastrear">
+        <div class="card">
+          <div class="field">
+            <label>Código(s) de rastreamento</label>
+            <textarea id="codigos" rows="1" placeholder="AA000000000BR, AA000000001BR…"
+                      spellcheck="false" autocomplete="off"></textarea>
+            <div class="cod-hint" id="cod-hint"></div>
+          </div>
+          <button id="btn" onclick="rastrear()">Rastrear</button>
+        </div>
+
+        <div id="log-box" class="log-box" style="display:none">
+          <div class="log-head">
+            <span>Progresso</span>
+            <span class="elapsed" id="elapsed">0.0s</span>
+          </div>
+          <div id="steps"></div>
+        </div>
+
+        <div id="out"></div>
+      </div>
+
+      <!-- aba histórico -->
+      <div class="tab-panel" id="panel-historico">
+        <div class="card">
+          <div class="hist-actions">
+            <button class="hist-clear" onclick="clearHistory()">Limpar histórico</button>
+          </div>
+          <div id="hist-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer style="text-align:center;padding:20px 0 16px;font-size:12px;color:var(--muted);">
+    <a href="https://github.com/opastorello/correios-rastreamento" target="_blank" rel="noopener"
+       style="color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+      <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+        0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+        -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
+        .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
+        -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27
+        .68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12
+        .51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48
+        0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+      opastorello/correios-rastreamento
+    </a>
+  </footer>
+
+  <script>
+    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+    const $codigos = document.getElementById('codigos');
+    const $hint    = document.getElementById('cod-hint');
+    const $btn     = document.getElementById('btn');
+    const $out     = document.getElementById('out');
+    const $logBox  = document.getElementById('log-box');
+    const $steps   = document.getElementById('steps');
+    const $el      = document.getElementById('elapsed');
+
+    function parseCodigos() {
+      return $codigos.value.toUpperCase()
+        .split(/[\n,;\s]+/)
+        .map(s => s.replace(/[^A-Z0-9]/g, ''))
+        .filter(s => s.length >= 8);
+    }
+
+    function autoResize() {
+      $codigos.style.height = 'auto';
+      $codigos.style.height = $codigos.scrollHeight + 'px';
+    }
+
+    $codigos.addEventListener('input', function() {
+      autoResize();
+      const codes = parseCodigos();
+      const lotes = codes.length > 20 ? Math.ceil(codes.length / 20) : 0;
+      if (lotes > 1)              $hint.textContent = `${codes.length} códigos — ${lotes} lotes de 20`;
+      else if (codes.length > 1)  $hint.textContent = `${codes.length} códigos detectados`;
+      else                         $hint.textContent = '';
+    });
+
+    $codigos.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey && parseCodigos().length <= 1) {
+        e.preventDefault();
+        rastrear();
+      }
+    });
+
+    const AUTH_REQUIRED = __AUTH_REQUIRED__;
+    const getToken = () => localStorage.getItem('api_token') || '';
+    const authH = () => { const t = getToken(); return t ? {'Authorization': 'Bearer ' + t} : {}; };
+
+    /* ── timer ── */
+    let _t = null;
+    function startTimer() {
+      const t0 = Date.now();
+      $el.textContent = '0.0s';
+      _t = setInterval(() => { $el.textContent = ((Date.now()-t0)/1000).toFixed(1)+'s'; }, 100);
+    }
+    function stopTimer() { clearInterval(_t); }
+
+    /* ── steps ── */
+    function resetLog() { $steps.innerHTML = ''; $logBox.style.display = 'none'; $el.textContent = '0.0s'; }
+
+    function addStep(txt) {
+      $logBox.style.display = 'block';
+      const el = document.createElement('div');
+      el.className = 'step pending';
+      el.innerHTML = `<span class="si"></span><span>${txt}</span>`;
+      $steps.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      return el;
+    }
+
+    function doneStep(el, txt) { el.className = 'step show done'; if (txt) el.querySelector('span:last-child').textContent = txt; }
+    function failStep(el, txt) { el.className = 'step show fail'; if (txt) el.querySelector('span:last-child').textContent = txt; }
+
+    const delay = ms => new Promise(r => setTimeout(r, ms));
+
+    let _abort = null;
+    function cancelar() { if (_abort) _abort.abort(); }
+
+    /* ── render helpers ── */
+    function renderCard(data, codigo, elapsed) {
+      if (data.erro) return `<div class="err-box">⚠️ ${esc(data.mensagem || 'Objeto não encontrado.')}</div>`;
+      const entregue = (data.situacao || '').toUpperCase() === 'E';
+      const eventos = data.eventos || [];
+      const lastEvento = eventos[0] || {};
+      const lastStatus = (lastEvento.descricaoWeb || '').toUpperCase();
+      const badgeClass = entregue ? 'badge-delivered' : 'badge-transit';
+      const badgeIcon  = entregue ? '✓' : '↻';
+      const badgeText  = entregue ? 'Entregue' : (lastStatus || 'Em andamento');
+      const tipoDesc   = (data.tipoPostal || {}).descricao || '';
+      const eventsHtml = eventos.map((ev, i) => {
+        const dtFmt = fmtDatetime((ev.dtHrCriado || {}).date || '');
+        const loc   = formatLoc(ev.unidade);
+        const desc  = esc(ev.descricaoWeb || ev.descricaoFrontEnd || '');
+        const dot   = i === 0 ? (entregue ? 'first' : 'transit') : '';
+        return `<div class="event">
+          <div class="event-dot ${dot}"></div>
+          <div class="event-body">
+            <div class="event-desc">${desc}</div>
+            ${loc    ? `<div class="event-loc">${esc(loc)}</div>` : ''}
+            ${dtFmt  ? `<div class="event-time">${esc(dtFmt)}</div>` : ''}
+          </div></div>`;
+      }).join('');
+      return `<div class="result-card">
+        <div class="result-head">
+          <div>
+            <div class="result-code">${esc(data.codObjeto || codigo)}</div>
+            ${tipoDesc ? `<div class="result-type">${esc(tipoDesc)}</div>` : ''}
+          </div>
+          <span class="badge ${badgeClass}">${badgeIcon} ${esc(badgeText)}</span>
+        </div>
+        <div class="result-meta">
+          ${data.dtPrevista ? `<div class="meta-item">Previsão: <strong>${esc(data.dtPrevista)}</strong></div>` : ''}
+          ${elapsed != null ? `<div class="meta-item">Consultado em <strong>${elapsed}s</strong></div>` : ''}
+        </div>
+        ${eventos.length ? `<div class="timeline">
+          <div class="tl-label">Histórico de eventos (${eventos.length})</div>
+          ${eventsHtml}
+        </div>` : ''}
+      </div>`;
+    }
+
+    /* ── rastrear ── */
+    const CODE_RE = /^[A-Z]{2}\d{9}[A-Z]{2}$/;
+
+    async function rastrear() {
+      const rawCodes = parseCodigos();
+      if (!rawCodes.length) { $codigos.focus(); return; }
+
+      // deduplicar
+      const codes  = [...new Set(rawCodes)];
+      const dupes  = rawCodes.length - codes.length;
+      const valid  = codes.filter(c =>  CODE_RE.test(c));
+      const invalid = codes.filter(c => !CODE_RE.test(c));
+
+      _abort = new AbortController();
+      const {signal} = _abort;
+      const postA = (path, body) => fetch(path, { method: 'POST', signal, headers: {'Content-Type':'application/json', ...authH()}, body: JSON.stringify(body) });
+
+      $btn.onclick = cancelar;
+      $btn.innerHTML = '✕ Cancelar';
+      $btn.style.cssText = 'background:transparent;border:1px solid var(--border);color:var(--muted)';
+      $out.innerHTML = '';
+      resetLog();
+      startTimer();
+
+      try {
+        // step inicial com info de dedup / inválidos
+        let s1txt = codes.length === 1 ? `Código: ${codes[0]}` : `${codes.length} código${codes.length > 1 ? 's' : ''} para rastrear`;
+        if (dupes)    s1txt += ` (${dupes} duplicata${dupes > 1 ? 's' : ''} removida${dupes > 1 ? 's' : ''})`;
+        if (invalid.length) s1txt += ` — ${invalid.length} inválido${invalid.length > 1 ? 's' : ''}`;
+        const s1 = addStep(s1txt);
+        await delay(200);
+        doneStep(s1);
+
+        // marcar inválidos imediatamente
+        for (const cod of invalid) failStep(addStep(`${cod} — formato inválido`));
+
+        if (!valid.length) {
+          stopTimer();
+          $out.innerHTML = invalid.map(c =>
+            `<div class="err-box" style="margin-bottom:8px">⚠️ ${esc(c)}: formato inválido — esperado 2 letras + 9 dígitos + 2 letras (ex: AA000000000BR)</div>`
+          ).join('');
+          return;
+        }
+
+        const s2 = addStep('Conectando ao servidor Correios…');
+        await delay(300);
+        doneStep(s2, 'Conexão estabelecida');
+
+        if (valid.length === 1) {
+          /* ── código único ── */
+          const s3 = addStep('Resolvendo CAPTCHA…');
+          const res  = await postA('/rastreamento/objeto', { codigo: valid[0] });
+          const data = await res.json();
+          const elapsed = $el.textContent;
+          stopTimer();
+          if (!res.ok) {
+            failStep(s3, 'Erro na consulta');
+            $out.innerHTML = `<div class="err-box">⚠️ ${esc(data.detail || 'Erro na consulta')}</div>`;
+            return;
+          }
+          doneStep(s3, 'CAPTCHA resolvido');
+          $out.innerHTML = renderCard(data, valid[0], parseFloat(elapsed));
+          if (!data.erro) {
+            const lastStatus = ((data.eventos || [])[0] || {}).descricaoWeb || '';
+            saveToHistory(data.codObjeto || valid[0], lastStatus.toUpperCase() || null,
+              (data.situacao || '').toUpperCase() === 'E', parseFloat(elapsed));
+          }
+        } else {
+          /* ── múltiplos: lotes de 20 via /multiplos (1 CAPTCHA por lote) ── */
+          const BATCH = 20;
+          const batches = [];
+          for (let i = 0; i < valid.length; i += BATCH) batches.push(valid.slice(i, i + BATCH));
+
+          const batchSteps = batches.map((b, i) =>
+            addStep(`Lote ${i+1}/${batches.length} — ${b.length} código${b.length > 1 ? 's' : ''}…`)
+          );
+
+          const results = {};
+          for (let i = 0; i < batches.length; i++) {
+            const batch = batches[i];
+            const bStep = batchSteps[i];
+            try {
+              const res  = await postA('/rastreamento/multiplos', { codigos: batch });
+              const data = await res.json();
+              if (!res.ok) {
+                failStep(bStep, `Lote ${i+1}/${batches.length} — erro`);
+                batch.forEach(c => { results[c] = null; });
+              } else {
+                let found = 0;
+                for (const cod of batch) {
+                  results[cod] = data[cod] || null;
+                  if (data[cod] && !data[cod].erro) found++;
+                }
+                doneStep(bStep, `Lote ${i+1}/${batches.length} — ${found}/${batch.length} encontrado${found !== 1 ? 's' : ''}`);
+              }
+            } catch (e) {
+              if (e.name === 'AbortError') throw e;
+              failStep(bStep, `Lote ${i+1}/${batches.length} — falha`);
+              batch.forEach(c => { results[c] = null; });
+            }
+          }
+
+          const elapsed = $el.textContent;
+          stopTimer();
+          $out.innerHTML = [
+            ...invalid.map(c => `<div class="err-box" style="margin-bottom:8px">⚠️ ${esc(c)}: formato inválido</div>`),
+            ...valid.map(cod => {
+              const obj = results[cod];
+              if (!obj) return `<div class="err-box" style="margin-bottom:8px">⚠️ ${esc(cod)}: não encontrado</div>`;
+              const card = renderCard(obj, cod, null);
+              if (!obj.erro) {
+                const lastStatus = ((obj.eventos || [])[0] || {}).descricaoWeb || '';
+                saveToHistory(obj.codObjeto || cod, lastStatus.toUpperCase() || null,
+                  (obj.situacao || '').toUpperCase() === 'E', null);
+              }
+              return `<div style="margin-bottom:10px">${card}</div>`;
+            })
+          ].join('');
+        }
+      } catch (e) {
+        stopTimer();
+        $steps.querySelectorAll('.step:not(.done):not(.fail)').forEach(el => failStep(el, null));
+        if (e.name === 'AbortError') {
+          $out.innerHTML = `<div class="err-box">Busca cancelada.</div>`;
+        } else {
+          $out.innerHTML = `<div class="err-box">⚠️ ${esc(e.message)}</div>`;
+        }
+      } finally {
+        $btn.onclick = rastrear;
+        $btn.textContent = 'Rastrear';
+        $btn.style.cssText = '';
+        $btn.disabled = false;
+      }
+    }
+
+    function fmtDatetime(raw) {
+      if (!raw) return '';
+      const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+      if (!m) return raw;
+      return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
+    }
+
+    function formatLoc(unidade) {
+      if (!unidade) return '';
+      const end = unidade.endereco || {};
+      const parts = [end.cidade, end.uf].filter(Boolean);
+      const loc = parts.join(' — ');
+      const tipo = unidade.tipo || '';
+      return [tipo, loc].filter(Boolean).join(', ');
+    }
+
+    /* ── gate ── */
+    function updateVisibility() {
+      const locked = AUTH_REQUIRED && !getToken();
+      document.getElementById('gate').style.display         = locked ? 'block' : 'none';
+      document.getElementById('main-content').style.display = locked ? 'none'  : '';
+    }
+
+    async function gateLogin() {
+      const tok = document.getElementById('gate-token').value.trim();
+      if (!tok) return;
+      const btn = document.getElementById('btn-gate');
+      const msg = document.getElementById('gate-msg');
+      btn.disabled = true;
+      btn.textContent = 'Validando…';
+      try {
+        const res = await fetch('/health', { headers: { 'Authorization': 'Bearer ' + tok } });
+        if (res.status === 401) {
+          showGateMsg('✕ Token inválido.'); btn.disabled = false; btn.textContent = 'Entrar'; return;
+        }
+      } catch {
+        showGateMsg('⚠ Erro ao validar.'); btn.disabled = false; btn.textContent = 'Entrar'; return;
+      }
+      localStorage.setItem('api_token', tok);
+      btn.disabled = false; btn.textContent = 'Entrar';
+      updateVisibility();
+    }
+
+    function showGateMsg(text) {
+      const msg = document.getElementById('gate-msg');
+      msg.textContent = text; msg.style.display = 'block';
+      setTimeout(() => { msg.style.display = 'none'; }, 3000);
+    }
+
+    document.getElementById('gate-token').addEventListener('keydown', e => { if (e.key === 'Enter') gateLogin(); });
+    updateVisibility();
+
+    /* ── tabs ── */
+    function switchTab(name) {
+      if (AUTH_REQUIRED && !getToken()) return;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+      document.getElementById('panel-' + name).classList.add('active');
+      if (name === 'historico') renderHistory();
+    }
+
+    /* ── history (localStorage — por browser/usuário) ── */
+    const HIST_KEY = 'correios_rastreamento_history';
+    function histLoad() { try { return JSON.parse(localStorage.getItem(HIST_KEY) || '{}'); } catch { return {}; } }
+    function histSave(d) { localStorage.setItem(HIST_KEY, JSON.stringify(d)); }
+
+    function saveToHistory(codigo, status, entregue, duracao_segundos) {
+      const data = histLoad();
+      const key  = codigo.toUpperCase();
+      const now  = new Date().toISOString();
+      if (data[key]) {
+        data[key].consultas++;
+        data[key].ultima_consulta = now;
+        if (status) data[key].status = status;
+        if (entregue !== null && entregue !== undefined) data[key].entregue = entregue;
+        if (duracao_segundos != null) data[key].ultima_duracao_s = Math.round(duracao_segundos * 10) / 10;
+      } else {
+        data[key] = { codigo: key, status, entregue, consultas: 1,
+          primeira_consulta: now, ultima_consulta: now,
+          ultima_duracao_s: duracao_segundos != null ? Math.round(duracao_segundos * 10) / 10 : null };
+      }
+      histSave(data);
+    }
+
+    function clearHistory() { localStorage.removeItem(HIST_KEY); renderHistory(); }
+
+    function deleteHistoryEntry(codigo) {
+      const data = histLoad();
+      delete data[codigo.toUpperCase()];
+      histSave(data);
+      renderHistory();
+    }
+
+    function fmtDt(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      const today = new Date();
+      const hm = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      if (d.toDateString() === today.toDateString()) return 'Hoje ' + hm;
+      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' ' + hm;
+    }
+
+    function renderHistory() {
+      const $list = document.getElementById('hist-list');
+      const data = histLoad();
+      const entries = Object.values(data).sort((a, b) =>
+        (b.ultima_consulta || '') > (a.ultima_consulta || '') ? 1 : -1);
+      if (!entries.length) {
+        $list.innerHTML = '<div class="hist-empty">Nenhum rastreamento registrado ainda.</div>';
+        return;
+      }
+      $list.innerHTML = entries.map(h => {
+        const statusColor = h.entregue ? 'var(--green)' : 'var(--accent-h)';
+        const statusText  = h.status || (h.entregue ? 'ENTREGUE' : 'EM ANDAMENTO');
+        return `
+        <div class="hist-item" onclick="fillFromHistory('${esc(h.codigo)}')">
+          <div style="flex:1;min-width:0">
+            <div class="hist-code">${esc(h.codigo)}</div>
+            <div class="hist-status" style="color:${statusColor}">${esc(statusText)}</div>
+            ${h.ultima_duracao_s != null ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(h.ultima_duracao_s)}s · ${esc(h.consultas)}× consultado</div>` : `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(h.consultas)}× consultado</div>`}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div class="hist-time">${fmtDt(h.ultima_consulta)}</div>
+          </div>
+          <button class="hist-del" title="Remover entrada"
+            onclick="event.stopPropagation(); deleteHistoryEntry('${esc(h.codigo)}')">×</button>
+        </div>`;
+      }).join('');
+    }
+
+    function fillFromHistory(codigo) {
+      switchTab('rastrear');
+      $codigos.value = codigo;
+      autoResize();
+      $out.innerHTML = '';
+    }
+  </script>
+</body>
+</html>"""
+
+
+@router.get("/", response_class=HTMLResponse)
+async def ui():
+    auth_required = "true" if _TOKEN else "false"
+    return _HTML.replace("__AUTH_REQUIRED__", auth_required)

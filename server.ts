@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import path from 'node:path';
 import express from "express";
 import cookieParser from 'cookie-parser';
 import authRoutes from './src/server/routes/authRoutes.js';
@@ -9,6 +10,10 @@ import cronRoutes from './src/server/routes/cronRoutes.js';
 import { sessionAuth } from './src/server/middleware/sessionAuth.js';
 
 const app = express();
+
+// Atrás do proxy reverso do Coolify (Traefik) fora da Vercel — necessário
+// pra req.ip e req.secure (proto real) ficarem corretos.
+app.set('trust proxy', 1);
 
 // Configurações básicas
 app.use(express.json());
@@ -48,10 +53,26 @@ if (process.env.NODE_ENV !== "production") {
     });
   });
 } else {
-  // Em produção (Vercel), servimos os arquivos estáticos da pasta dist
+  // Em produção, servimos os arquivos estáticos da pasta dist
   app.use(express.static("dist"));
+
+  // Fallback de SPA: qualquer rota que não seja /api/* devolve o index.html
+  // pra o React Router assumir client-side. Na Vercel isso é feito pelo
+  // `routes` do vercel.json; fora dela (Docker/VPS) precisa ser aqui.
+  app.get(/^(?!\/api).*/, (_req, res) => {
+    res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
+  });
+
+  // Na Vercel o handler exportado é invocado diretamente (sem .listen()).
+  // Rodando standalone (Docker/VPS), precisa subir o servidor de verdade.
+  if (!process.env.VERCEL) {
+    const PORT = parseInt(process.env.PORT || '3000', 10);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  }
 }
 
-// Exportamos o app para a Vercel
+// Exportamos o app para a Vercel (e para os testes de integração, se houver)
 export default app;
 
