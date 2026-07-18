@@ -20,7 +20,11 @@ export class RastreamentoServiceClient implements TrackingClient {
       { codigo: code },
       { timeout: this.timeoutMs, headers: this.authHeaders() }
     );
-    return { carrier: 'CARRIER_CORREIOS', json: JSON.stringify(res.data) };
+    const data = res.data;
+    if (data?.erro) {
+      throw new Error(data.mensagem || 'Tracking error');
+    }
+    return { carrier: 'CARRIER_CORREIOS', json: JSON.stringify(data) };
   }
 
   async trackMany(codes: string[]): Promise<Map<string, { carrier?: string; json?: string } | Error>> {

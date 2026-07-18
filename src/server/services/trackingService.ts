@@ -58,7 +58,13 @@ export class TrackingService {
       return { code, ok: false, error: { message: 'No response for this code' } };
     }
 
-    return { code, ok: true, data: formatTrackResponse(envelopeOrError) };
+    const data = formatTrackResponse(envelopeOrError);
+    if (data && !data.code) {
+      // O scraper nem sempre ecoa codObjeto (ex: resposta parcial); sem isso, o
+      // code:null quebra o pareamento código->resultado em quem consome a API.
+      data.code = code;
+    }
+    return { code, ok: true, data };
   }
 
   async trackBatch(codes: string[]): Promise<BatchTrackResponse> {
