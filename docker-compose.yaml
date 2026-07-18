@@ -31,17 +31,9 @@ services:
       start_period: 60s
     restart: always
 
-  migrate:
-    build: .
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-api_correios}
-    command: ["npx", "tsx", "src/server/db/migrate.ts"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   app:
     build: .
+    command: ["sh", "-c", "npm run db:migrate && npx tsx server.ts"]
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -57,8 +49,8 @@ services:
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
       correios-rastreamento:
         condition: service_healthy
     healthcheck:
