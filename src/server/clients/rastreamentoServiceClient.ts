@@ -2,6 +2,9 @@ import axios from 'axios';
 import type { TrackingClient } from '../services/trackingService.js';
 
 const MULTI_CHUNK_SIZE = 20;
+// /rastreamento/multiplos resolve 1 captcha e raspa ate 20 objetos por chamada,
+// entao precisa de bem mais tempo do que uma consulta de objeto unico.
+const MIN_MULTI_TIMEOUT_MS = 45000;
 
 export class RastreamentoServiceClient implements TrackingClient {
   constructor(
@@ -37,7 +40,7 @@ export class RastreamentoServiceClient implements TrackingClient {
         const res = await axios.post(
           `${this.baseUrl}/rastreamento/multiplos`,
           { codigos: chunk },
-          { timeout: this.timeoutMs, headers: this.authHeaders() }
+          { timeout: Math.max(this.timeoutMs, MIN_MULTI_TIMEOUT_MS), headers: this.authHeaders() }
         );
         const data = res.data as Record<string, any>;
 
