@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { TrackingService } from '../services/trackingService.js';
+import { importarRespostaDoSite, RespostaInvalidaError } from '../utils/importarRespostaSite.js';
 
 export class TrackingController {
   private trackingService: TrackingService;
@@ -8,6 +9,21 @@ export class TrackingController {
   constructor(trackingService: TrackingService) {
     this.trackingService = trackingService;
   }
+
+  // Coleta assistida: importa o que uma pessoa copiou do site oficial (ver importarRespostaSite.ts).
+  // Privacidade: o texto colado nunca e registrado em log nem devolvido nas mensagens de erro.
+  importar = (req: Request, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      return res.status(400).json({ error: "text must be a string with the pasted response (2 to 2,000,000 characters)" });
+    }
+    try {
+      return res.json(importarRespostaDoSite(req.body.text));
+    } catch (error: any) {
+      if (error instanceof RespostaInvalidaError) return res.status(400).json({ error: error.message });
+      console.error("[TrackingController] import failed:", error?.name);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
 
   trackBatch = async (req: Request, res: Response) => {
     const errors = validationResult(req);

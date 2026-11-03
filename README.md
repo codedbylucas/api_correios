@@ -44,12 +44,31 @@ administrativo, mas o fluxo normal é criar pelo próprio painel.
 
 ## Provedores de rastreio
 
-Não há integração com serviço pago de terceiros — o rastreio é feito
-diretamente contra o site público dos Correios (`rastreamento.correios.com.br`),
-resolvendo o captcha da página e usando a mesma resposta JSON que os Correios
-retornam. Dois provedores implementam isso, escolhidos por `TRACKING_PROVIDER`:
+O provedor é escolhido por `TRACKING_PROVIDER`. **Use `correios-api`.**
 
-**`crnn` (padrão, recomendado)** — delega a resolução do captcha via HTTP a
+> **Aviso (nov/2026):** o site público dos Correios trocou o captcha de imagem pelo
+> **Cloudflare Turnstile** e as rotas `resultado.php`/`rastroMulti.php` passaram a exigir
+> POST com o token do Turnstile, que só um navegador real gera. Por isso `crnn` e `scraper`
+> **pararam de funcionar** (o serviço responde "Método não permitido"; a plataforma agora
+> devolve 503 explicando). Não há forma legítima de contornar esse desafio.
+
+**`correios-api` (recomendado)** — API OFICIAL dos Correios (CWS): token em
+`POST /token/v1/autentica` (ou `/autentica/cartaopostagem`) e rastreio em
+`GET /srorastro/v1/objetos/{codigo}` e `GET /srorastro/v1/objetos?codigosObjetos=A,B`.
+A resposta é convertida para o mesmo formato de antes, então webhooks e consumidores
+(ex.: CardSys) não mudam.
+- `CORREIOS_API_USER` e `CORREIOS_API_ACCESS_CODE` — credenciais do CWS
+  (usuário do Meu Correios/CNPJ e o **código de acesso** gerado em cws.correios.com.br → Credenciais).
+- `CORREIOS_API_POSTAGE_CARD` — opcional: número do cartão de postagem (autentica por ele).
+- `CORREIOS_API_URL` (padrão `https://api.correios.com.br`) e `CORREIOS_API_BATCH_SIZE` (padrão 20 códigos por consulta).
+- **Limite importante:** segundo os Correios, a consulta só devolve objetos **vinculados ao contrato**
+  das credenciais. Os códigos têm de ter sido postados sob esse contrato; os demais voltam como
+  "não encontrado". Confirme com o responsável pelo contrato antes de depender disso.
+- O formato da resposta não consta no OpenAPI público; a conversão é tolerante e tem teste
+  (`npm test`), mas **valide com uma resposta real** na primeira vez.
+- Faltando credencial, a aplicação não sobe e lista quais variáveis definir.
+
+**`crnn` (legado, quebrado pelo Turnstile)** — delega a resolução do captcha via HTTP a
 uma instância do `correios-rastreamento`, vendorizado neste repo em
 [`services/correios-rastreamento/`](services/correios-rastreamento/)
 (Python/FastAPI + CRNN treinada especificamente para o captcha Securimage dos
@@ -70,7 +89,7 @@ esse provedor que faz a otimização de lote (1 captcha para até 20 códigos).
   funciona standalone também — só apontar `RASTREAMENTO_SERVICE_URL` (e
   `RASTREAMENTO_SERVICE_TOKEN` se aplicável) pra instância pública.
 
-**`scraper`** — mesmo scraping, mas resolve o captcha localmente no processo
+**`scraper` (legado, quebrado pelo Turnstile)** — mesmo scraping, mas resolve o captcha localmente no processo
 Node (`CAPTCHA_SOLVER=ocr`, Tesseract, grátis mas menos confiável — erra
 ocasionalmente por confusão de caracteres parecidos como l/i, f/t, c/e — ou
 `CAPTCHA_SOLVER=2captcha`/`anticaptcha` com `CAPTCHA_API_KEY`, serviço pago
@@ -89,6 +108,21 @@ ponto de vista deles. Pode parar de funcionar sem aviso a qualquer momento
 (mudança de HTML, tipo de captcha, bloqueio por IP/volume). Como o rastreio de
 webhook é periódico, uma falha pontual de captcha não é fatal — só tenta de
 novo no próximo ciclo agendado.
+
+### Coleta assistida (sem credencial, com uma pessoa)
+
+`POST /api/track/import` (mesma autenticação do `/batch`) recebe `{"text": "..."}` e devolve a mesma lista do
+`/batch` com vários códigos. Uma pessoa consulta **no site oficial** (até 20 códigos por busca, passando ela mesma
+pela verificação) e cola o resultado, em um destes formatos:
+- **JSON** da chamada `resultado.php` (1 objeto) ou `rastroMulti.php` (vários) — F12 → Rede → Resposta. Exato.
+- **Texto** da página de resultado (Ctrl+A, Ctrl+C) — sem F12, aproximado (sem segundos nem tipo de unidade).
+
+A plataforma não fala com os Correios nesse fluxo e não toca no desafio de segurança. Só data, descrição, tipo de
+unidade, cidade e UF são devolvidos; o texto colado não é registrado em log nem repetido em mensagens de erro.
+Limite de corpo: 2 MB só nessa rota. Para conferir uma colagem real antes de importar, rode
+`npm run diagnostico:colagem` e abra http://127.0.0.1:3777 (tudo local).
+Estado: testado com dados simulados (`npm test`), **ainda não com uma resposta real**.
+Detalhes e comparação em `docs/investigacao-correios-2026/`.
 
 ## Rastreio via webhook (assinaturas)
 

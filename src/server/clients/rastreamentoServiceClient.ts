@@ -2,6 +2,19 @@ import axios from 'axios';
 import type { TrackingClient } from '../services/trackingService.js';
 
 const MULTI_CHUNK_SIZE = 20;
+
+// O site dos Correios trocou o captcha de imagem pelo Cloudflare Turnstile e passou a exigir POST: o raspador
+// recebe "Metodo nao permitido". Isso nao e problema do objeto: e o provedor que acabou. Sinaliza 503 e o que fazer.
+const SINTOMA_TURNSTILE = /m[eé]todo n[aã]o permitido|turnstile/i;
+
+function erroDoServico(mensagem: string | undefined): Error {
+  if (mensagem && SINTOMA_TURNSTILE.test(mensagem)) {
+    const erro = new Error('Provedor de rastreio indisponivel: o site dos Correios passou a exigir verificacao Cloudflare Turnstile. Use TRACKING_PROVIDER=correios-api (API oficial).') as Error & { response: { status: number } };
+    erro.response = { status: 503 };
+    return erro;
+  }
+  return new Error(mensagem || 'Tracking error');
+}
 // /rastreamento/multiplos resolve 1 captcha e raspa ate 20 objetos por chamada,
 // entao precisa de bem mais tempo do que uma consulta de objeto unico.
 const MIN_MULTI_TIMEOUT_MS = 45000;
@@ -25,7 +38,7 @@ export class RastreamentoServiceClient implements TrackingClient {
     );
     const data = res.data;
     if (data?.erro) {
-      throw new Error(data.mensagem || 'Tracking error');
+      throw erroDoServico(data.mensagem);
     }
     return { carrier: 'CARRIER_CORREIOS', json: JSON.stringify(data) };
   }
@@ -49,7 +62,7 @@ export class RastreamentoServiceClient implements TrackingClient {
           if (!objeto) {
             out.set(code, new Error('Code missing from batch response'));
           } else if (objeto.erro) {
-            out.set(code, new Error(objeto.mensagem || 'Tracking error'));
+            out.set(code, erroDoServico(objeto.mensagem));
           } else {
             out.set(code, { carrier: 'CARRIER_CORREIOS', json: JSON.stringify(objeto) });
           }

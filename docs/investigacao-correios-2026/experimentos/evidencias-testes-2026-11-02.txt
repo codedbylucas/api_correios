@@ -1,0 +1,51 @@
+Evidencias de testes - 2026-11-02 (api_correios)
+Todos os dados abaixo sao SIMULADOS (tests/fixturesSite.ts). Nenhum teste usou resposta real dos Correios.
+
+ok 1 - exige usuario e codigo de acesso
+ok 2 - toLegacyDate aceita ISO, "espaco" e {date}; lixo vira null
+ok 3 - track: autentica com Basic, consulta com Bearer e devolve no formato que a plataforma ja usa
+ok 4 - com cartao de postagem usa o endpoint de cartao e manda o numero
+ok 5 - o token e reaproveitado entre consultas
+ok 6 - token recusado na consulta: renova uma vez e repete
+ok 7 - credencial recusada vira 503 com orientacao (nao "objeto nao encontrado")
+ok 8 - objeto sem eventos (mensagem da API) e erro 404, nao sucesso
+ok 9 - trackMany: divide em lotes, mistura sucesso e falha, e codigo ausente vira erro
+ok 10 - trackMany: falha do lote inteiro (limite 429) marca todos os codigos do lote
+ok 11 - TrackingService + API oficial: sucesso formatado e erro com o status certo para o consumidor
+ok 12 - cliente antigo: "Metodo nao permitido" (Turnstile) vira 503 com a orientacao, nao erro generico
+ok 13 - sem sessao nem chave de API: 401 e nada e processado
+ok 14 - resultado.php: 200 com o formato da plataforma
+ok 15 - rastroMulti.php: 200 com 3 itens (em transito, nao encontrado, entregue)
+ok 16 - texto copiado da pagina (sem F12): 200
+ok 17 - entradas invalidas: 400 sem ecoar o que foi enviado
+ok 18 - limites: colagem grande (>100kb) passa em /import; >2mb leva 413; /batch continua com limite padrao
+ok 19 - /batch segue validando como antes (rota existente nao foi afetada)
+ok 20 - privacidade: nenhuma saida de log contem o texto colado, nomes ou codigos
+ok 21 - health informa o provedor ativo
+ok 22 - resultado.php: formato da plataforma, mais recente primeiro, unidade e cidade/UF
+ok 23 - rastroMulti.php: le transito + entregue, usa o objeto completo da linha e marca o nao encontrado
+ok 24 - rastroMulti.php: linha sem o objeto completo usa so o resumo (descricao + cidade/UF + data)
+ok 25 - os dois formatos dao os MESMOS eventos para o mesmo objeto
+ok 26 - lista simples e { objetos: [...] } tambem sao aceitos; data em texto ISO (API oficial) tambem
+ok 27 - varios objetos: repetidos viram um so
+ok 28 - colagem vazia, so espacos, {} , [] e listas vazias sao rejeitadas com mensagem clara
+ok 29 - JSON malformado: erro claro que NAO repete o conteudo colado
+ok 30 - o site devolveu erro ({erro:true}): mensagem do site, sem HTML
+ok 31 - objeto inexistente (so mensagem) e objeto sem eventos viram erro 404, nunca sucesso
+ok 32 - campos ausentes: evento sem descricao/unidade/endereco/data nao derruba os outros
+ok 33 - datas invalidas: so-invalidas vira erro 422; mistura mantem o evento e ordena o sem data por ultimo
+ok 34 - codigo fora do padrao vira erro 400 do item; excesso de objetos e rejeitado
+ok 35 - dados pessoais do site (nome, rua) NUNCA saem na resposta importada
+ok 36 - texto da pagina de 1 objeto: mesmos eventos do JSON (perde segundos e tipo de unidade)
+ok 37 - texto da tabela de varios objetos: ultimo evento de cada codigo
+ok 38 - pagina de um objeto copiada duas vezes nao duplica eventos
+ok 39 - o codigo pode vir sem espacos ou espacado ("AA 123 456 785 BR")
+ok 40 - texto sem eventos, sem codigo, sem hora ou com data impossivel e rejeitado sem ecoar o conteudo
+ok 41 - JSON continua tendo prioridade: so cai no texto quando a colagem nao comeca com { ou [
+# tests 41
+# pass 41
+# fail 0
+
+Mutacoes (o teste precisa FALHAR quando o codigo e quebrado):
+ - limite do /import voltando a 100kb  -> 'limites: ...' falhou (verificado)
+ - controller registrando o texto colado -> 'privacidade: ...' falhou (verificado)

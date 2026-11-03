@@ -9,6 +9,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "diagnostico:colagem": "tsx docs/investigacao-correios-2026/experimentos/colar-resposta.ts",
+    "test": "tsx --test tests/correiosApiClient.test.ts tests/importarRespostaSite.test.ts tests/importarTextoCopiado.test.ts tests/importEndpoint.integration.test.ts",
     "db:migrate": "tsx src/server/db/migrate.ts",
     "auth:create-user": "tsx scripts/createUser.ts",
     "webhooks:create-api-key": "tsx scripts/createApiKey.ts",

@@ -54,3 +54,5 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 .env*
+
+temp_coolify_key

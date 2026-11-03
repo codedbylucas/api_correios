@@ -1,0 +1,16 @@
+OK     Site: pagina inicial publica responde
+       HTTP 200
+OK     Site: formulario exige Turnstile + CSRF + campo-isca (explica por que o raspador parou)
+       turnstile=true csrf=true honeypot=true limite_por_busca=20
+OK     Site: consulta por GET nao e aceita (so POST com token do navegador)
+       HTTP 405
+OK     API oficial: prefixo correto /srorastro existe (403 Token invalido = rota existe)
+       HTTP 403 {"msgs":["GTW-006: Token inválido."],"date":"2026-11-02T22:17:18","method":"GET"
+OK     API oficial: prefixo /rastro NAO existe (GTW-003 = servico inexistente)
+       HTTP 503 {"msgs":["GTW-003: Serviço inexistente. path: /rastro/v1/objetos/AA123456785BR"]
+OK     API oficial: rota de token existe (exige Basic = credencial do CWS)
+       HTTP 403
+FALHA  Terceiro (https://rastro-correios-api.zeabur.app/api/v2/track/): disponibilidade com codigo falso
+       HTTP 502 Bad Gateway
+
+6/7 checagens OK

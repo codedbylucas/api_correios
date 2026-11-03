@@ -23,4 +23,12 @@ router.post(
   trackingController.trackBatch
 );
 
+// Coleta assistida (ver utils/importarRespostaSite.ts): mesmo formato de saida do /batch com varios codigos
+router.post(
+  '/import',
+  apiKeyOrSession,
+  [body('text').isString().isLength({ min: 2, max: 2_000_000 }).withMessage('text must be a string (the JSON pasted from the site)')],
+  trackingController.importar
+);
+
 export default router;
